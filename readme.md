@@ -5,7 +5,7 @@ It uses an PDO database for storing file info.
 
 ## 🪄 Installation
 
-* You can use a single php file and put it into your web directory.
+* You can use a single php file `dist/f.php` and put it into your web directory.
 * Then you need a configuration file that defines the database and the directory to browse.
 * index the directory
 * start browsing your indexed file strcture
@@ -77,6 +77,10 @@ return [
     'size' => 'Size',
     'modified' => 'Modified',
 
+    'go_up' => 'Go 1 directory level up',
+    'open_directory' => 'Show directory',
+    'open_file' => 'Show file',
+
     // search results
     'hits' => 'Hits',
 
@@ -106,8 +110,7 @@ return [
         ],
     ],
     'image' => [
-        'icon' => '📷',
-        // 'icon' => '🏙️',
+        'icon' => '🏙️',
         'ext' => [
             'bmp' ,
             'gif' ,
