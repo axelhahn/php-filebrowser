@@ -10,8 +10,7 @@ return [
         ],
     ],
     'image' => [
-        'icon' => '📷',
-        // 'icon' => '🏙️',
+        'icon' => '🏙️',
         'ext' => [
             'bmp' ,
             'gif' ,

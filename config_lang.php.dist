@@ -20,6 +20,7 @@ return [
     'size' => 'Size',
     'modified' => 'Modified',
 
+    'go_up' => 'Go 1 directory level up',
     'open_directory' => 'Show directory',
     'open_file' => 'Show file',
 
