@@ -1,0 +1,30 @@
+<?php
+return [
+    'title' => 'File Browser',
+    'search' => 'Search',
+    'search_placeholder' => 'Type',
+
+    'back' => 'Back',
+
+    'indexing_start' => 'Indexing files ...',
+    'index_status' => 'Index status',
+        'dirs' => 'Dirs',
+        'files' => 'Files',
+        'timestamp' => 'Timestamp',
+        'age' => 'Age',
+        'reindex' => 'Reindex',
+
+    // file table
+    'type' => 'Type',
+    'name' => 'Name',
+    'size' => 'Size',
+    'modified' => 'Modified',
+
+    'open_directory' => 'Show directory',
+    'open_file' => 'Show file',
+
+    // search results
+    'hits' => 'Hits',
+
+    'current_dir' => 'Current directory',
+];

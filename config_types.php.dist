@@ -1,0 +1,52 @@
+<?php
+return [
+    'audio' => [
+        'icon' => '🎵',
+        'ext' => [            
+            'm4a'  ,
+            'mp3'  ,
+            'ogg'  ,
+            'wav'  ,
+        ],
+    ],
+    'image' => [
+        'icon' => '📷',
+        // 'icon' => '🏙️',
+        'ext' => [
+            'bmp' ,
+            'gif' ,
+            'ico' ,
+            'jpg' ,
+            'jpeg',
+            'png' ,
+            'svg' ,
+            'webp',
+        ],
+    ],
+    'text' => [
+        'icon' => '📝',
+        'ext' => [
+            'asp'  ,
+            'css'  ,
+            'js'   ,
+            'json' ,
+            'html' ,
+            'log'  ,
+            'md'   ,
+            'php'  ,
+            'py'  ,
+            'rb'  ,
+            'ts'   ,
+            'txt'  ,
+            'xml'  ,
+        ],
+    ],
+    'video' => [
+        'icon' => '🎬',
+        'ext' => [
+            'mp4'  ,
+            'webm' ,
+            'ogg'  ,
+        ],
+    ],
+];

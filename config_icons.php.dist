@@ -1,0 +1,14 @@
+<?php
+return [
+    'abort' => '❌',
+    'back'  => '⬅️',
+    'dir'   => '📁',
+    'dirup' => '↖️',
+    'file'  => '🔸',
+    'home'  => '🏡',
+
+    'reindex' => '🔁',
+    'search'  => '🔎',
+    'unknown' => '❓',
+    'warning' => '⚠️',
+];

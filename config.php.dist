@@ -1,0 +1,34 @@
+<?php
+
+return [
+
+
+    // --- START single dir to index
+
+    // dir without trailing "/"
+    'dir'=>__DIR__.'/myfiles',
+    // relative dir or alias without trailing "/"
+    'reldir'=>'myfiles',
+
+    'reindex_after'=>300, // 5 min
+    'exclude'=>[
+        'regex'=>[
+            '\.mmdb$',
+        ]
+    ],
+    'show_info'=>1,
+
+    // --- END single dir to index
+
+    // for local testing
+    'show_index'=>1,
+    'show_reindex'=>0, // set to 1 only in local environment, not in production
+
+    "pdo" => [
+        "db" => [
+            'dsn' => 'sqlite:'.__DIR__.'/data/filesearch.sqlite3',
+        ],
+        // 'showdebug'=>true,
+        // 'showerrors'=>true,
+    ],
+];
