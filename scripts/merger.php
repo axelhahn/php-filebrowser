@@ -12,7 +12,6 @@
 
 chdir(dirname(__DIR__));
 $sOutfile="dist/f.php";
-$sOutfile="f.php";
 
 
 $sFileHeader="

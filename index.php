@@ -21,7 +21,89 @@ require_once __DIR__ . '/classes/filesearch.class.php';
 // ----------------------------------------------------------------------
 
 $APPNAME = 'Axels file browser';
-$VERSION = '0.2';
+$VERSION = '0.3';
+
+function getFileIcon(string $sFile) {
+    global $aIco, $aTypes;
+    $sExt=pathinfo($sFile, PATHINFO_EXTENSION);
+    foreach ($aTypes as $sType => $aTypedata) {
+        $aExtensionList=$aTypedata['ext'];
+        if (in_array($sExt, $aExtensionList)) {
+            return $aTypedata['icon'];
+        }
+    }
+    return $aIco['file'];
+}
+
+
+// ----------------------------------------------------------------------
+//
+// M A I N  -  CLI
+//
+// ----------------------------------------------------------------------
+
+if (php_sapi_name() == "cli") {
+    $sDirIdx = '';
+    $filesearch = new Filesearch($aConfig, $sDirIdx);
+
+    echo "
+    
+    ⣎⣱ ⡀⢀ ⢀⡀ ⡇ ⢀⣀   ⣏⡉ ⠄ ⡇ ⢀⡀ ⣇⡀ ⡀⣀ ⢀⡀ ⡀ ⢀ ⢀⣀ ⢀⡀ ⡀⣀
+    ⠇⠸ ⠜⠣ ⠣⠭ ⠣ ⠭⠕   ⠇  ⠇ ⠣ ⠣⠭ ⠧⠜ ⠏  ⠣⠜ ⠱⠱⠃ ⠭⠕ ⠣⠭ ⠏ 
+
+                                          Version: $VERSION
+
+👤 Author: Axel Hahn
+🧾 Source: <https://github.com/axelhahn/php-filebrowser/>
+📜 License: GNU GPL 3.0
+📗 Docs: see <https://www.axel-hahn.de/docs/php-filebrowser/>
+
+";
+
+    if ($argc > 1) {
+        $sAction = $argv[1];
+        switch ($sAction) {
+            case '-h':
+            case '--help':
+                echo "\n";
+                echo "USAGE: $argv[0] [options] [parameters]\n";
+                echo "\n";
+                echo "OPTIONS:\n";
+                echo "  -h, --help   Show this help message\n";
+                echo "  -i, --index  Index files\n";
+                echo "\n";
+                echo "PARAMETERS:\n";
+                echo "  none\n";
+                exit(0);
+                break;
+
+            // case '-d':
+            // case '--dir':
+            //     $sDirIdx = '';
+
+            case '-i':
+            case '--index':
+                echo "Indexing files ...\n\n";
+                $filesearch->refresh();
+                echo "Done.\n";
+                break;
+            default:
+                echo "Unknown action: $sAction\n";
+                break;
+        }
+    } else {
+        echo "Parameter required. Use -h or --help.\n";
+    }
+    exit(0);
+}
+
+
+// ----------------------------------------------------------------------
+//
+// M A I N  -  WEB
+//
+// ----------------------------------------------------------------------
+
 
 /**
  * @var string searchterm
@@ -141,80 +223,6 @@ $aLang=$aLang ?: [
 
     'current_dir' => 'Current directory',
 ];
-
-function getFileIcon(string $sFile) {
-    global $aIco, $aTypes;
-    $sExt=pathinfo($sFile, PATHINFO_EXTENSION);
-    foreach ($aTypes as $sType => $aTypedata) {
-        $aExtensionList=$aTypedata['ext'];
-        if (in_array($sExt, $aExtensionList)) {
-            return $aTypedata['icon'];
-        }
-    }
-    return $aIco['file'];
-}
-
-
-// ----------------------------------------------------------------------
-//
-// M A I N  -  CLI
-//
-// ----------------------------------------------------------------------
-
-if (php_sapi_name() == "cli") {
-    $sDirIdx = '';
-    echo "
-    
-    ⣎⣱ ⡀⢀ ⢀⡀ ⡇ ⢀⣀   ⣏⡉ ⠄ ⡇ ⢀⡀ ⣇⡀ ⡀⣀ ⢀⡀ ⡀ ⢀ ⢀⣀ ⢀⡀ ⡀⣀
-    ⠇⠸ ⠜⠣ ⠣⠭ ⠣ ⠭⠕   ⠇  ⠇ ⠣ ⠣⠭ ⠧⠜ ⠏  ⠣⠜ ⠱⠱⠃ ⠭⠕ ⠣⠭ ⠏ 
-
-                                          Version: $VERSION
-
-";
-
-    if ($argc > 1) {
-        $sAction = $argv[1];
-        switch ($sAction) {
-            case '-h':
-            case '--help':
-                echo "\n";
-                echo "USAGE: $argv[0] [options] [parameters]\n";
-                echo "\n";
-                echo "OPTIONS:\n";
-                echo "  -h, --help   Show this help message\n";
-                echo "  -i, --index  Index files\n";
-                echo "\n";
-                echo "PARAMETERS:\n";
-                echo "  none\n";
-                exit(0);
-                break;
-
-            // case '-d':
-            // case '--dir':
-            //     $sDirIdx = '';
-
-            case '-i':
-            case '--index':
-                echo "Indexing files ...\n\n";
-                $filesearch->refresh();
-                echo "Done.\n";
-                break;
-            default:
-                echo "Unknown action: $sAction\n";
-                break;
-        }
-    } else {
-        echo "Parameter required. Use -h or --help.\n";
-    }
-    exit(0);
-}
-
-
-// ----------------------------------------------------------------------
-//
-// M A I N  -  WEB
-//
-// ----------------------------------------------------------------------
 
 $sSearchform = '
     <form action="?" method="get" class="frmsearch">
@@ -501,7 +509,7 @@ echo $sStatusbox
         . $sDirlisting.$sDirinfo
     )
     . '</div>'
-    ."<footer>$APPNAME <span>$VERSION</span></footer>"
+    ."<footer><a href=\"https://github.com/axelhahn/php-filebrowser/\">Github: $APPNAME <span>$VERSION</span></a> * GNU GPL 3</footer>"
     . "<script>let myTable = new JSTable('#table1',{perPage:5000, searchable: false, sortable: true, perPageSelect: false});</script>";
 
     // .'<pre>aCurrentFiles = '.print_r($aCurrentFiles, true).'</pre>'
