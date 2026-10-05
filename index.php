@@ -11,29 +11,16 @@
 
 */
 
-require_once __DIR__ . '/init_db.php';
-require_once __DIR__ . '/classes/filesearch.class.php';
-
-// ----------------------------------------------------------------------
-//
-// M A I N
-//
-// ----------------------------------------------------------------------
-
 $APPNAME = 'Axels file browser';
-$VERSION = '0.3';
+$VERSION = '0.4';
 
-function getFileIcon(string $sFile) {
-    global $aIco, $aTypes;
-    $sExt=pathinfo($sFile, PATHINFO_EXTENSION);
-    foreach ($aTypes as $sType => $aTypedata) {
-        $aExtensionList=$aTypedata['ext'];
-        if (in_array($sExt, $aExtensionList)) {
-            return $aTypedata['icon'];
-        }
-    }
-    return $aIco['file'];
-}
+global $aConfig, $oDB;
+
+require_once __DIR__ . '/vendor/php-abstract-dbo/src/pdo-db.class.php';
+$aConfig = require __DIR__ . '/config.php';
+$oDB = new axelhahn\pdo_db((array)$aConfig['pdo']??[]);
+
+require_once __DIR__ . '/classes/filesearch.class.php';
 
 
 // ----------------------------------------------------------------------
@@ -104,6 +91,25 @@ if (php_sapi_name() == "cli") {
 //
 // ----------------------------------------------------------------------
 
+/**
+ * get icon ba filetype of given file.
+ * 
+ * @param string $sFile
+ * @return string
+ */
+function getFileIcon(string $sFile): string
+{
+    global $aIco, $aTypes;
+    $sExt=pathinfo($sFile, PATHINFO_EXTENSION);
+    foreach ($aTypes as $sType => $aTypedata) {
+        $aExtensionList=$aTypedata['ext'];
+        if (in_array($sExt, $aExtensionList)) {
+            return $aTypedata['icon'];
+        }
+    }
+    return $aIco['file'];
+}
+
 
 /**
  * @var string searchterm
@@ -141,6 +147,19 @@ $aIco = $aIco ?: [
 // --- file types
 $aTypes =  file_exists(__DIR__.'/config_types.php') ? include 'config_types.php' : null;
 $aTypes=$aTypes ?: [
+    
+    'archive' => [
+        'icon' => '🗜️',
+        'ext' => [            
+            'arj'  ,
+            'bz'  ,
+            'gz'  ,
+            'rar'  ,
+            'tar'  ,
+            'tgz'  ,
+            'zip'  ,
+        ],
+    ],
     'audio' => [
         'icon' => '🎵',
         'ext' => [            
@@ -164,6 +183,37 @@ $aTypes=$aTypes ?: [
             'webp',
         ],
     ],
+    'office' => [
+        'icon' => '⌨️',
+        'ext' => [            
+            'doc'  ,
+            'docx' ,
+            'odt'  ,
+            'ods'  ,
+            'odp'  ,
+            'ppt'  ,
+            'pptx' ,
+            'xls'  ,
+            'xlsx' ,
+        ],
+    ],
+    'packages' => [
+        'icon' => '📦',
+        'ext' => [            
+            'apk'  ,
+            'deb'  ,
+            'msi'  ,
+            'rpm'  ,
+        ],
+    ],
+
+    'pdf' => [
+        'icon' => '📰',
+        'ext' => [
+            'pdf'  ,
+        ],
+    ],
+
     'text' => [
         'icon' => '📝',
         'ext' => [
@@ -408,7 +458,7 @@ if ($sSearchterm) {
                 // $sDirlisting .= "$aIco[file] <a href=\"$aItem[path]/$aItem[file]\">$aItem[file]</a><br>";
                 $sDirlisting .= "
                     <td class=\"ico\">".getFileIcon($aItem['file'])."</td>
-                    <td class=\"name\"><a class=\"file\" href=\"$aItem[path]/$aItem[file]\" title=\"$aLang[open_file]\n$aItem[path]/$aItem[file]\">$aItem[file]</a></td>
+                    <td class=\"name\"><span class=\"hidden\">$aItem[type]</span><a class=\"file\" href=\"$aItem[path]/$aItem[file]\" title=\"$aLang[open_file]\n$aItem[path]/$aItem[file]\">$aItem[file]</a></td>
                     <td class=\"size\">".number_format($aItem['size'])."</td>
                     <td class=\"modified\">".date('Y-m-d H:i:s', $aItem['modified'])."</td>
                     ";
@@ -422,7 +472,7 @@ if ($sSearchterm) {
                 // $sDirlisting .= "$aIco[dir] <a href=\"?showdir=$aItem[path]/$aItem[file]\">$aItem[file]</a><br>";
                 $sDirlisting .= "
                     <td class=\"ico\">$aIco[dir]</td>
-                    <td class=\"name\"><a class=\"dir\" href=\"?showdir=$aItem[path]/$aItem[file]\" title=\"$aLang[open_directory]\n$aItem[path]/$aItem[file]\">$aItem[file]</a></td>
+                    <td class=\"name\"><span class=\"hidden\">$aItem[type]</span><a class=\"dir\" href=\"?showdir=$aItem[path]/$aItem[file]\" title=\"$aLang[open_directory]\n$aItem[path]/$aItem[file]\">$aItem[file]</a></td>
                     <td class=\"size\"></a>
                     <td class=\"modified\">".date('Y-m-d H:i:s', $aItem['modified'])."</td>
                     ";

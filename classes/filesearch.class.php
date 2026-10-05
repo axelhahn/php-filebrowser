@@ -154,7 +154,7 @@ class Filesearch
         foreach($this->_oFileindex->search([
                 'columns'=>['*'],
                 'where'=>$sWhere,
-                'order'=>'ORDER BY file ASC',
+                'order'=>'ORDER BY type ASC, file ASC',
             ], 
             $aData
         ) as $aItem){
@@ -164,6 +164,25 @@ class Filesearch
         $aReturn['time'] = $this->_timer();
         $aReturn['timestamp'] = time();
         return $aReturn;
+    }
+
+    /**
+     * Detect if a given filename matches an exclude rule in the config array. 
+     * It returns true if the file is excluded, false otherwise.
+     * 
+     * @param string $sFileBasename filename to check (basename only, no path)
+     * @return bool
+     */
+    protected function _isExcluded(string $sFileBasename): bool
+    {
+        if (isset($this->_aConfig['exclude']['regex'])) {
+            foreach ($this->_aConfig['exclude']['regex'] as $sExclude) {
+                if (preg_match("#$sExclude#", $sFileBasename)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -203,14 +222,10 @@ class Filesearch
 
             $sFileBasename = basename($file);
             $bSkip=false;
-            if (isset($this->_aConfig['exclude']['regex'])) {
-                foreach ($this->_aConfig['exclude']['regex'] as $sExclude) {
-                    if (preg_match("#$sExclude#", $sFileBasename)) {
-                        echo "Skip $sFiletype '$file' - it matches $sExclude...".PHP_EOL;
-                        $bSkip=true;
-                        continue;
-                    }
-                }
+            if($this->_isExcluded($sFileBasename)){
+                echo "Skip $sFiletype '$file' - it is excluded...".PHP_EOL;
+                $bSkip=true;
+                continue;
             }
             if($bSkip){
                 continue;
@@ -261,7 +276,7 @@ class Filesearch
         echo PHP_EOL;
 
         $this->_startTimer();
-        echo ">>> Step 2 of 2 - Cleanup deleted files...".PHP_EOL;
+        echo ">>> Step 2 of 2 - Cleanup entries ...".PHP_EOL;
         $aData=[
             'idx' => $this->_idx,
         ];
@@ -275,8 +290,20 @@ class Filesearch
         ) as $aItem){
             $sFilename="$this->sDir/".preg_replace('/'.$this->_sReldir.'/','',$aItem['path']) ."/$aItem[file]";
             $sFilename=str_replace('//','/',$sFilename);
+            $bDelete=false;
             if(!file_exists($sFilename)){
-                echo "Deleting '$sFilename' from index...".PHP_EOL;
+                echo "Not found: '$sFilename' ...";
+                $bDelete=true;
+            } else {
+
+                if($this->_isExcluded($aItem['file'])){
+                    echo "Excluded '$aItem[file]' ...";
+                    $bDelete=true;
+                }
+            }
+
+            if($bDelete){
+                echo "Deleting from index...".PHP_EOL;
                 $this->_oFileindex->delete($aItem['id']);
             } else {
                 // echo "Found '$sFilename'...".PHP_EOL;
@@ -311,25 +338,29 @@ class Filesearch
         ];
         $file = false;
 
-        $sWhereFile="";
-        $sWhereDir="";
+        $sWhereFileHit="";
+        $sWhereFileLike="";
         $aData=[];
         $iCount=0;
 
+        $aData['idx'] = $this->_idx;
+        $aData['subdir'] = $sSubdir;
 
         foreach (explode(" ", $q) as $keyword) {
             $keyword = trim($keyword);
             $iCount++;
-            $sVarKey="keyword$iCount";
-            $aData[$sVarKey] = "%$keyword%";
+            $sVarKeyHit="keyword$iCount";
+            $sVarKeyLike="like$iCount";
+            
+            // $aData[$sVarKeyHit]  = "$keyword";
+            $aData[$sVarKeyLike] = "%$keyword%";
 
-            $sWhereFile.=($sWhereFile ? " AND " : "" ) . " file LIKE :$sVarKey";
-            $sWhereDir.=($sWhereDir ? " AND " : "" ) . " path LIKE :$sVarKey";
+            $sWhereFileLike.=($sWhereFileLike ? " AND " : "" ) . " file LIKE :$sVarKeyLike";
+            // $sWhereDir.=($sWhereDir ? " AND " : "" ) . " path LIKE :$sVarKey";
         }
-        $aData['idx'] = $this->_idx;
-        $aData['subdir'] = "$sSubdir%";
 
-        $sWhere="idx = :idx AND path LIKE :subdir AND ( ($sWhereFile) OR ($sWhereDir ))";
+        // $sWhere="idx = :idx AND path LIKE :subdir AND ( ($sWhereFile) OR ($sWhereDir ))";
+        $sWhere="idx = :idx AND path LIKE :subdir AND ($sWhereFileLike)";
 
         foreach($this->_oFileindex->search([
                 'columns'=>['*'],
@@ -340,6 +371,7 @@ class Filesearch
         ) as $aItem){
             $aReturn['result'][] = $aItem;            
         }
+
         $aReturn['hits'] = count($aReturn['result']);
         $aReturn['time'] = $this->_timer();
         $aReturn['timestamp'] = time();

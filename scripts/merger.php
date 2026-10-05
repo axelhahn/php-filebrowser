@@ -201,7 +201,6 @@ echo "Reading 'index.php' ...\n";
 $sContent=file_get_contents("index.php");
 
 echo "Replacing content of 'init_db.php' ...\n";
-$sContent=preg_replace("/require_once.*init_db.php';/", getFile("init_db.php"), $sContent);
 $sContent=preg_replace("/require_once.*pdo-db.class.php';/", getFile("vendor/php-abstract-dbo/src/pdo-db.class.php"), $sContent);
 
 $sContent=preg_replace("/require_once 'pdo-db-base.constants.php';/", getFile("vendor/php-abstract-dbo/src/pdo-db-base.constants.php"), $sContent);
