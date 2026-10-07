@@ -185,6 +185,60 @@ class Filesearch
         return false;
     }
 
+    protected function _importBulk($sAction, $aRow=[], $iLimit=1){
+        static $sSqlData;
+        static $aData;
+        static $iRows;
+
+        $aCols=['id', 'idx', 'type', 'path', 'file', 'modified', 'size'];
+        $sSqlInsert="INSERT OR REPLACE INTO obj_fileindex (" . implode(',', $aCols).") VALUES ";
+
+        switch ($sAction){
+            case 'reset':
+                $sSqlData = '';
+                $aData = [];
+                $iRows = 0;
+                break;
+            case 'add':
+                // $aData[] = $aRow;
+                $sSqlData.= ($sSqlData ? ', ' : '') . '(';
+                // $id=$aRow[0];
+                $sSqlRow='';
+                foreach($aCols as $sCol){
+                    $val=$aRow[$sCol]??NULL;
+                    $datakey="row_{$iRows}_$sCol";
+                    $sSqlRow.= ($sSqlRow ? ", ": "") . ":$datakey";
+                    $aData[$datakey]=$val;
+                }
+                $sSqlData.=$sSqlRow . ") ";
+                $iRows++;
+                break;
+            case 'finish':
+                break;
+            default:
+                echo __METHOD__ ."Error:Unknown action $sAction".PHP_EOL;
+                return false;
+        }
+
+        if(( $iRows>=$iLimit || $sAction=='finish') && count($aData)){
+            echo "Flushing / importing bulk data after $iRows datasets - $sAction".PHP_EOL;
+            $sSql="$sSqlInsert $sSqlData";
+            
+                // echo "SQL: $sSql".PHP_EOL;
+                // print_r($aData);
+                // die(__FILE__.":".__LINE__);
+
+            $aReturn = $this->_oFileindex->makeQuery($sSql, $aData);
+            if ($aReturn === false) {
+                print_r($this->_oDB->lastQuery(true));
+                // die("ABORT");
+            }
+            $this->_importBulk('reset');
+        }
+        return true;
+    }
+
+
     /**
      * Action: refresh index of set directory
      * 
@@ -198,7 +252,51 @@ class Filesearch
         ignore_user_abort(true);
         set_time_limit(0);
         
-        echo '>>> Step 1 of 2 - Refreshing dir = '.$this->sDir.' ('. $this->_sReldir .')'.PHP_EOL;
+        $this->_startTimer();
+        echo ">>> Step 1 of 2 - Cleanup entries ...".PHP_EOL;
+        $aId2Delete=[];
+        $aData=[
+            'idx' => $this->_idx,
+        ];
+        $sWhere="idx = :idx";
+        foreach($this->_oFileindex->search([
+                'columns'=>['*'],
+                'where'=>$sWhere,
+                'order'=>'ORDER BY path asc, file ASC',
+            ], 
+            $aData
+        ) as $aItem){
+            $sFilename="$this->sDir/".preg_replace('/'.$this->_sReldir.'/','',$aItem['path']) ."/$aItem[file]";
+            $sFilename=str_replace('//','/',$sFilename);
+            if(!file_exists($sFilename)){
+                echo "Not found: '$sFilename' ...".PHP_EOL;
+                $aId2Delete[]=$aItem['id'];
+            } else {
+
+                if($this->_isExcluded($aItem['file'])){
+                    echo "Excluded: '$aItem[file]' ... delete $sFilename ...".PHP_EOL;
+                    $aId2Delete[]=$aItem['id'];
+                }
+            }
+
+        }
+        if(count($aId2Delete)){
+            echo "Deleting ".count($aId2Delete)." entries from index...".PHP_EOL;
+            $this->_oFileindex->makeQuery(
+                "DELETE FROM obj_fileindex WHERE idx = :idx AND id in (".implode(",",$aId2Delete).")",
+                $aData
+            );            
+        } else {
+            echo "No entries to delete from index...".PHP_EOL;
+        }
+        $iTotalTime = $this->_timer();
+        $iDigits = $iTotalTime < 10 ? 3 : 0;
+        echo "Used time: " . round($iTotalTime, $iDigits) . "s for cleanup".PHP_EOL;
+        echo PHP_EOL;
+        
+        
+        echo '>>> Step 2 of 2 - Refreshing dir = '.$this->sDir.' ('. $this->_sReldir .')'.PHP_EOL;
+        $this->_importBulk('reset');
         $iterator = new RecursiveDirectoryIterator($this->sDir);
         foreach (new RecursiveIteratorIterator($iterator) as $file) {
             if (
@@ -252,20 +350,24 @@ class Filesearch
                 'path' => $sRelPath,
                 'file' => $sFileBasename,
             ])) {
-                // echo "Adding $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
                 $this->_oFileindex->new();
             } else {
-                // echo "Updating $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
-            }
+                $aItem['id']=$this->_oFileindex->id();
+            }                
             $this->_oFileindex->setItem($aItem);
             if($this->_oFileindex->hasChange()){
-                echo "Saving $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
-                $this->_oFileindex->save();
+                echo "Save $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
+                // print_r($aItem);
+                $this->_importBulk('add', $aItem, 50);
+                // $this->_oFileindex->save();
             } else {
                 echo "No changes for $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
             }
+            
 
         }
+        $this->_importBulk('finish');
+
         $iTotalTime = $this->_timer();
         $iDigits = $iTotalTime < 10 ? 3 : 0;
         $aStatus=$this->status();
@@ -275,41 +377,6 @@ class Filesearch
         echo "Speed: " .number_format(round( ((int)$aStatus['dir']+(int)$aStatus['files']) / $iTotalTime ), 0). " file objects per second".PHP_EOL;
         echo PHP_EOL;
 
-        $this->_startTimer();
-        echo ">>> Step 2 of 2 - Cleanup entries ...".PHP_EOL;
-        $aData=[
-            'idx' => $this->_idx,
-        ];
-        $sWhere="idx = :idx";
-        foreach($this->_oFileindex->search([
-                'columns'=>['*'],
-                'where'=>$sWhere,
-                'order'=>'ORDER BY path asc, file ASC',
-            ], 
-            $aData
-        ) as $aItem){
-            $sFilename="$this->sDir/".preg_replace('/'.$this->_sReldir.'/','',$aItem['path']) ."/$aItem[file]";
-            $sFilename=str_replace('//','/',$sFilename);
-            $bDelete=false;
-            if(!file_exists($sFilename)){
-                echo "Not found: '$sFilename' ...";
-                $bDelete=true;
-            } else {
-
-                if($this->_isExcluded($aItem['file'])){
-                    echo "Excluded '$aItem[file]' ...";
-                    $bDelete=true;
-                }
-            }
-
-            if($bDelete){
-                echo "Deleting from index...".PHP_EOL;
-                $this->_oFileindex->delete($aItem['id']);
-            } else {
-                // echo "Found '$sFilename'...".PHP_EOL;
-            }
-        }
-        echo "Used time: " . round($iTotalTime, $iDigits) . "s for cleanup".PHP_EOL;
 
         return true;
     }

@@ -12,7 +12,7 @@
 */
 
 $APPNAME = 'Axels file browser';
-$VERSION = '0.4';
+$VERSION = '0.5';
 
 global $aConfig, $oDB;
 

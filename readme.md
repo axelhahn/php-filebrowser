@@ -1,4 +1,4 @@
-# PHP file browser
+# PHP file browser (WIP)
 
 Web ui for a file browser with a file search.
 It is written in PHP and uses an PDO database for storing file info.
