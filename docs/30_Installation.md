@@ -48,10 +48,10 @@ For the full description of  the configuration see the next page.
 
 ### Index the directory
 
-Run the script with `-i`or `--index`:
+Run the script with `-r` or `--reindex`:
 
 ```bash
-php f.php --index
+php f.php --reindex
 ```
 
 ### Open f.php in your browser

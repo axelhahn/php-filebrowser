@@ -80,6 +80,18 @@ Each file type has its own subkey with
 ```php  
 <?php
 return [
+    'archive' => [
+        'icon' => '🗜️',
+        'ext' => [            
+            'arj'  ,
+            'bz'  ,
+            'gz'  ,
+            'rar'  ,
+            'tar'  ,
+            'tgz'  ,
+            'zip'  ,
+        ],
+    ],
     'audio' => [
         'icon' => '🎵',
         'ext' => [            
@@ -90,6 +102,7 @@ return [
         ],
     ],
     'image' => [
+        // 'icon' => '📷',
         'icon' => '🏙️',
         'ext' => [
             'bmp' ,
@@ -102,6 +115,37 @@ return [
             'webp',
         ],
     ],
+    'office' => [
+        'icon' => '⌨️',
+        'ext' => [            
+            'doc'  ,
+            'docx' ,
+            'odt'  ,
+            'ods'  ,
+            'odp'  ,
+            'ppt'  ,
+            'pptx' ,
+            'xls'  ,
+            'xlsx' ,
+        ],
+    ],
+    'packages' => [
+        'icon' => '📦',
+        'ext' => [            
+            'apk'  ,
+            'deb'  ,
+            'msi'  ,
+            'rpm'  ,
+        ],
+    ],
+
+    'pdf' => [
+        'icon' => '📰',
+        'ext' => [
+            'pdf'  ,
+        ],
+    ],
+
     'text' => [
         'icon' => '📝',
         'ext' => [

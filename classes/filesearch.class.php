@@ -48,6 +48,8 @@ class Filesearch
     protected object $_oFileindex;
     protected string $_idx;
 
+    protected int $_iLimitBulkInsert = 100;
+
     // ----------------------------------------------------------------------
     // setter
     // ----------------------------------------------------------------------
@@ -185,16 +187,19 @@ class Filesearch
         return false;
     }
 
-    protected function _importBulk($sAction, $aRow=[], $iLimit=1){
+    protected function _importBulk($sAction, $aRow=[]) {
         static $sSqlData;
         static $aData;
         static $iRows;
 
-        $aCols=['id', 'idx', 'type', 'path', 'file', 'modified', 'size'];
+        $aCols=['id', 'timecreated', 'timeupdated','idx', 'type', 'path', 'file', 'modified', 'size'];
         $sSqlInsert="INSERT OR REPLACE INTO obj_fileindex (" . implode(',', $aCols).") VALUES ";
 
         switch ($sAction){
             case 'reset':
+                unset($sSqlData);
+                unset($aData);
+
                 $sSqlData = '';
                 $aData = [];
                 $iRows = 0;
@@ -220,18 +225,11 @@ class Filesearch
                 return false;
         }
 
-        if(( $iRows>=$iLimit || $sAction=='finish') && count($aData)){
-            echo "Flushing / importing bulk data after $iRows datasets - $sAction".PHP_EOL;
+        if(( $iRows>=$this->_iLimitBulkInsert || $sAction=='finish') && count($aData)){
+            echo "Flushing non written data after $iRows datasets".PHP_EOL;
             $sSql="$sSqlInsert $sSqlData";
-            
-                // echo "SQL: $sSql".PHP_EOL;
-                // print_r($aData);
-                // die(__FILE__.":".__LINE__);
-
-            $aReturn = $this->_oFileindex->makeQuery($sSql, $aData);
-            if ($aReturn === false) {
+            if ($this->_oFileindex->makeQuery($sSql, $aData) === false) {
                 print_r($this->_oDB->lastQuery(true));
-                // die("ABORT");
             }
             $this->_importBulk('reset');
         }
@@ -244,58 +242,76 @@ class Filesearch
      * 
      * @return bool
      */
-    public function refresh(): bool
+    public function refresh($bDeleteAll=true): bool
     {
-        $this->_startTimer();
-        // $sRelDir = str_replace($this->_sWebroot, "", $this->sDir);
 
+        $iStep=0;
+        $iSteps=2;
         ignore_user_abort(true);
         set_time_limit(0);
-        
-        $this->_startTimer();
-        echo ">>> Step 1 of 2 - Cleanup entries ...".PHP_EOL;
-        $aId2Delete=[];
+
         $aData=[
             'idx' => $this->_idx,
         ];
-        $sWhere="idx = :idx";
-        foreach($this->_oFileindex->search([
-                'columns'=>['*'],
-                'where'=>$sWhere,
-                'order'=>'ORDER BY path asc, file ASC',
-            ], 
-            $aData
-        ) as $aItem){
-            $sFilename="$this->sDir/".preg_replace('/'.$this->_sReldir.'/','',$aItem['path']) ."/$aItem[file]";
-            $sFilename=str_replace('//','/',$sFilename);
-            if(!file_exists($sFilename)){
-                echo "Not found: '$sFilename' ...".PHP_EOL;
-                $aId2Delete[]=$aItem['id'];
-            } else {
 
-                if($this->_isExcluded($aItem['file'])){
-                    echo "Excluded: '$aItem[file]' ... delete $sFilename ...".PHP_EOL;
-                    $aId2Delete[]=$aItem['id'];
-                }
-            }
+        $this->_startTimer();
+        $iStep++;
+        if($bDeleteAll){
+            echo ">>> Step $iStep of $iSteps - Delete all ...".PHP_EOL;
+            echo "Delete all current entries ...".PHP_EOL;
+            $this->_oFileindex->makeQuery("DELETE FROM obj_fileindex WHERE idx = :idx", $aData);
 
-        }
-        if(count($aId2Delete)){
-            echo "Deleting ".count($aId2Delete)." entries from index...".PHP_EOL;
-            $this->_oFileindex->makeQuery(
-                "DELETE FROM obj_fileindex WHERE idx = :idx AND id in (".implode(",",$aId2Delete).")",
-                $aData
-            );            
+            echo "Optimize database ...".PHP_EOL;
+            $this->_oDB->optimize();
+
         } else {
-            echo "No entries to delete from index...".PHP_EOL;
+
+            echo ">>> Step $iStep of $iSteps - Cleanup entries ...".PHP_EOL;
+            $aId2Delete=[];
+            $aData=[
+                'idx' => $this->_idx,
+            ];
+            $sWhere="idx = :idx";
+            foreach($this->_oFileindex->search([
+                    'columns'=>['*'],
+                    'where'=>$sWhere,
+                    'order'=>'ORDER BY path asc, file ASC',
+                ], 
+                $aData
+            ) as $aItem){
+                $sFilename="$this->sDir/".preg_replace('/'.$this->_sReldir.'/','',$aItem['path']) ."/$aItem[file]";
+                $sFilename=str_replace('//','/',$sFilename);
+                if(!file_exists($sFilename)){
+                    echo "Not found: '$sFilename' ...".PHP_EOL;
+                    $aId2Delete[]=$aItem['id'];
+                } else {
+
+                    if($this->_isExcluded($aItem['file'])){
+                        echo "Excluded: '$aItem[file]' ... delete $sFilename ...".PHP_EOL;
+                        $aId2Delete[]=$aItem['id'];
+                    }
+                }
+
+            }
+            if(count($aId2Delete)){
+                echo "Deleting ".count($aId2Delete)." entries from index...".PHP_EOL;
+                $this->_oFileindex->makeQuery(
+                    "DELETE FROM obj_fileindex WHERE idx = :idx AND id in (".implode(",",$aId2Delete).")",
+                    $aData
+                );
+                echo "Optimize database ...".PHP_EOL;
+                $this->_oDB->optimize();
+            } else {
+                echo "No entries to delete from index...".PHP_EOL;
+            }
         }
         $iTotalTime = $this->_timer();
         $iDigits = $iTotalTime < 10 ? 3 : 0;
         echo "Used time: " . round($iTotalTime, $iDigits) . "s for cleanup".PHP_EOL;
         echo PHP_EOL;
         
-        
-        echo '>>> Step 2 of 2 - Refreshing dir = '.$this->sDir.' ('. $this->_sReldir .')'.PHP_EOL;
+        $iStep++;
+        echo ">>> Step $iStep of $iSteps - Refreshing dir = '$this->sDir ($this->_sReldir)".PHP_EOL;
         $this->_importBulk('reset');
         $iterator = new RecursiveDirectoryIterator($this->sDir);
         foreach (new RecursiveIteratorIterator($iterator) as $file) {
@@ -328,6 +344,7 @@ class Filesearch
             if($bSkip){
                 continue;
             }
+
             $sRelPath= "$this->_sReldir/".str_replace($this->sDir, "", dirname($file));
             $sRelPath=str_replace('//','/',$sRelPath);
             $sRelPath=preg_replace('#/$#','',$sRelPath);
@@ -342,29 +359,36 @@ class Filesearch
                 'modified' => filemtime($file),
                 'size' => filesize($file)
             ];
-
-            // $this->_oFileindex->new();
-            if(!$this->_oFileindex->readByFields([
-                'idx' => $this->_idx,
-                'type' => $sFiletype,
-                'path' => $sRelPath,
-                'file' => $sFileBasename,
-            ])) {
-                $this->_oFileindex->new();
-            } else {
-                $aItem['id']=$this->_oFileindex->id();
-            }                
-            $this->_oFileindex->setItem($aItem);
-            if($this->_oFileindex->hasChange()){
+            if($bDeleteAll){
                 echo "Save $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
-                // print_r($aItem);
-                $this->_importBulk('add', $aItem, 50);
-                // $this->_oFileindex->save();
+                $aItem['timecreated'] = time();
+                $aItem['timeupdated'] = null;
+                $this->_importBulk('add', $aItem);                
             } else {
-                echo "No changes for $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
-            }
-            
 
+                // $this->_oFileindex->new();
+                if(!$this->_oFileindex->readByFields([
+                    'idx' => $this->_idx,
+                    'type' => $sFiletype,
+                    'path' => $sRelPath,
+                    'file' => $sFileBasename,
+                ])) {
+                    $this->_oFileindex->new();
+                    $aItem['timecreated'] = time();
+                    $aItem['timeupdated'] = null;
+                } else {
+                    $aItem['id']=$this->_oFileindex->id();
+                    $aItem['timeupdated'] = time();
+                }
+
+                $this->_oFileindex->setItem($aItem);
+                if($this->_oFileindex->hasChange()){
+                    echo "Save $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
+                    $this->_importBulk('add', $aItem, 100);
+                } else {
+                    echo "No changes for $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
+                }
+            }
         }
         $this->_importBulk('finish');
 
@@ -467,10 +491,21 @@ class Filesearch
                 "SELECT count(*) as items FROM obj_fileindex WHERE idx = :idx AND type = 'file'", 
                 $aData
             )[0]['items']??0;
-        $aReturn['timestamp']=date("U", strtotime($this->_oFileindex->makeQuery(
-                "SELECT max(timecreated) as created FROM obj_fileindex WHERE idx = :idx", 
+        
+        
+        // $aReturn['timestamp']=date("U", strtotime($this->_oFileindex->makeQuery(
+        //         "SELECT max(timecreated) as created FROM obj_fileindex WHERE idx = :idx", 
+        //         $aData
+        //     )[0]['created']??0));
+
+        $aLast=$this->_oFileindex->makeQuery(
+                "SELECT max(timecreated) as created, max(timeupdated) as updated FROM obj_fileindex WHERE idx = :idx", 
                 $aData
-            )[0]['created']??0));
+            );
+
+        $iLast=$aLast[0]['updated']??$aLast[0]['created']??0;
+
+        $aReturn['timestamp']=$iLast;
 
         return $aReturn;
     
