@@ -48,7 +48,7 @@ class Filesearch
     protected object $_oFileindex;
     protected string $_idx;
 
-    protected int $_iLimitBulkInsert = 100;
+    protected int $_iLimitBulkInsert = 250;
 
     // ----------------------------------------------------------------------
     // setter
@@ -197,9 +197,6 @@ class Filesearch
 
         switch ($sAction){
             case 'reset':
-                unset($sSqlData);
-                unset($aData);
-
                 $sSqlData = '';
                 $aData = [];
                 $iRows = 0;
@@ -279,13 +276,12 @@ class Filesearch
                 ], 
                 $aData
             ) as $aItem){
-                $sFilename="$this->sDir/".preg_replace('/'.$this->_sReldir.'/','',$aItem['path']) ."/$aItem[file]";
+                $sFilename="$this->sDir/".preg_replace('#'.$this->_sReldir.'#','',$aItem['path']) ."/$aItem[file]";
                 $sFilename=str_replace('//','/',$sFilename);
                 if(!file_exists($sFilename)){
                     echo "Not found: '$sFilename' ...".PHP_EOL;
                     $aId2Delete[]=$aItem['id'];
                 } else {
-
                     if($this->_isExcluded($aItem['file'])){
                         echo "Excluded: '$aItem[file]' ... delete $sFilename ...".PHP_EOL;
                         $aId2Delete[]=$aItem['id'];
@@ -384,7 +380,7 @@ class Filesearch
                 $this->_oFileindex->setItem($aItem);
                 if($this->_oFileindex->hasChange()){
                     echo "Save $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
-                    $this->_importBulk('add', $aItem, 100);
+                    $this->_importBulk('add', $aItem);
                 } else {
                     echo "No changes for $sFiletype '$sRelPath/$sFileBasename'...".PHP_EOL;
                 }

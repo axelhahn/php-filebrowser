@@ -33,7 +33,7 @@ td.modified {width: 20%; color: #488;}
 .main{background:#fff;}
 .context{ float: right; margin-left: 2em;}
 .contextbox{ background: #fff; padding: 1em; box-shadow: 0 0 3em #eee; margin-bottom: 2em;}
-.output{height: 70vH;  overflow: scroll;}
+.output{height: 80vH;  overflow: scroll;}
 .path {opacity: 0.5;}
 .search{font-size: 100%; color: #388; border: none; border-bottom: 2px solid #f8f8f8; width: 20vH;}
 .search:focus{outline: none;}
