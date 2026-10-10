@@ -12,7 +12,7 @@
 */
 
 $APPNAME = 'Axels file browser';
-$VERSION = '0.7';
+$VERSION = '0.8';
 
 global $aConfig, $oDB;
 
@@ -357,16 +357,22 @@ switch ($sAction) {
             <h2>'.$aLang['indexing_start'].'</h2>
             <br><a href="?" class="button">'.$aIco['back'].' '.$aLang['back'].'</a><br><br>
             <div class="output"><pre>';
-        $filesearch->refresh();
+        $filesearch->refresh(false);
 
         echo '</pre></div><br><a href="?" class="button">'.$aIco['back'].' '.$aLang['back'].'</a><br><br>';
         die();
         break;
 }
 
+$sDirlisting='';
+
 // generate breadcrumb
 $sMypath = "";
-foreach (explode("/", $sShowDir) as $sEntry) {
+$sMypath = $sRelRoot;
+$sSubdirs = str_replace($sRelRoot, "", $sShowDir);
+$sBreadcrumb.= "$aIco[home] <a class=\"dir\" href=\"?showdir=$sMypath\" title=\"$aLang[open_directory]\n$sMypath\">$aConfig[label]</a> / ";
+
+foreach (explode("/", $sSubdirs) as $sEntry) {
     if(!$sEntry) continue;
     $sMypath .= "/$sEntry";
     $sBreadcrumb .= ($sMypath < $sRelRoot)
@@ -377,6 +383,8 @@ foreach (explode("/", $sShowDir) as $sEntry) {
 $sBreadcrumb = ($sBreadcrumb ? "<strong>$sBreadcrumb</strong>" : "");
 
 if ($sSearchterm) {
+    $sTitleSearch='';
+    $sSearchOut='';
     $aQueryResult = $filesearch->search($sSearchterm, $sShowDir);
     foreach(explode(" ", $sSearchterm) as $sWord){
         $sTitleSearch.=($sTitleSearch ? " &amp; " : "") . "<code>'".htmlentities($sWord)."'</code>";

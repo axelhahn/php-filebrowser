@@ -247,6 +247,7 @@ class Filesearch
         ignore_user_abort(true);
         set_time_limit(0);
 
+        $this->_oDB->setQueryLog(false);
         $aData=[
             'idx' => $this->_idx,
         ];
@@ -431,7 +432,7 @@ class Filesearch
         $iCount=0;
 
         $aData['idx'] = $this->_idx;
-        $aData['subdir'] = $sSubdir;
+        $aData['subdir'] = "$sSubdir%";
 
         foreach (explode(" ", $q) as $keyword) {
             $keyword = trim($keyword);
