@@ -19,7 +19,7 @@ return [
     // dir without trailing "/"
     'dir'=>__DIR__.'/myfiles',
     // relative dir or alias without trailing "/"
-    'reldir'=>'myfiles',
+    'reldir'=>'/myfiles',
     'label'=>'My files',
 
     'reindex_after'=>300, // 5 min
